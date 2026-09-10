@@ -103,6 +103,7 @@ class SplashScreen extends StatelessWidget {
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
+                    backgroundColor: Colors.transparent,
                     side: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),

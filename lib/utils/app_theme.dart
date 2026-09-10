@@ -28,6 +28,10 @@ class AppTheme {
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: primaryBlue, width: 1.5),
       ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Colors.red, width: 1),
+      ),
       labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -39,6 +43,16 @@ class AppTheme {
           borderRadius: BorderRadius.circular(14),
         ),
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        side: BorderSide(color: Colors.grey.shade200),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        backgroundColor: Colors.white,
       ),
     ),
   );
@@ -57,15 +71,19 @@ class AppTheme {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.white12),
+        borderSide: const BorderSide(color: Colors.white12),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.white12),
+        borderSide: const BorderSide(color: Colors.white12),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: primaryBlue, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1),
       ),
       labelStyle: const TextStyle(color: Colors.white70, fontSize: 14),
     ),
@@ -78,6 +96,16 @@ class AppTheme {
           borderRadius: BorderRadius.circular(14),
         ),
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        side: const BorderSide(color: Colors.white24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        backgroundColor: Colors.transparent,
       ),
     ),
   );

@@ -143,7 +143,7 @@ class _CourseCardState extends State<CourseCard> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: currentGradeLabel,
+                    initialValue: currentGradeLabel,
                     style: TextStyle(
                       fontWeight: FontWeight.normal,
                       fontSize: 15,

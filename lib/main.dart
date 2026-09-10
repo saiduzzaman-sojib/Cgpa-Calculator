@@ -1,3 +1,4 @@
+import 'package:cgpa_calculator/screens/home_screens.dart';
 import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
 import 'utils/app_theme.dart';
@@ -17,7 +18,7 @@ class CGPACalculatorApp extends StatelessWidget {
       themeMode: ThemeMode.system, //
       theme: AppTheme.lightTheme, //
       darkTheme: AppTheme.darkTheme, //
-      home: const SplashScreen(),
+      home: const HomeScreen(),
     );
   }
 }

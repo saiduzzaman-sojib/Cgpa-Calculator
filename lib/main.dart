@@ -1,6 +1,6 @@
-import 'package:cgpa_calculator/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
-
+import 'screens/splash_screen.dart';
+import 'utils/app_theme.dart';
 
 void main() {
   runApp(const CGPACalculatorApp());
@@ -12,14 +12,11 @@ class CGPACalculatorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CGPA Calculator',
+      title: 'CGPA Tracker',
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.system,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF3F6FA),
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF132F73)),
-      ),
+      themeMode: ThemeMode.system, //
+      theme: AppTheme.lightTheme, //
+      darkTheme: AppTheme.darkTheme, //
       home: const SplashScreen(),
     );
   }

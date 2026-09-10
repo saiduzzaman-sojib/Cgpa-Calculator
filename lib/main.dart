@@ -1,4 +1,6 @@
+import 'package:cgpa_calculator/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
+
 
 void main() {
   runApp(const CGPACalculatorApp());
@@ -12,18 +14,13 @@ class CGPACalculatorApp extends StatelessWidget {
     return MaterialApp(
       title: 'CGPA Calculator',
       debugShowCheckedModeBanner: false,
+      themeMode: ThemeMode.system,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF3F6FA),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF132F73)),
       ),
-      home: const Scaffold(
-        body: Center(
-          child: Text(
-            'CGPA Calculator Setup Ready',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-        ),
-      ),
+      home: const SplashScreen(),
     );
   }
 }

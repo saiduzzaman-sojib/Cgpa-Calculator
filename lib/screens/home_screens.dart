@@ -53,11 +53,30 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(builder: (context) => const AddCourseScreen()),
     );
-    
+
     if (newCourse != null && newCourse is Course) {
       setState(() {
         _courses.insert(0, newCourse);
         _calculateResult();
+      });
+    }
+  }
+
+  Future<void> _editCourse(Course course) async {
+    final updatedCourse = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddCourseScreen(courseToEdit: course),
+      ),
+    );
+
+    if (updatedCourse != null && updatedCourse is Course) {
+      setState(() {
+        final index = _courses.indexWhere((c) => c.id == updatedCourse.id);
+        if (index != -1) {
+          _courses[index] = updatedCourse;
+          _calculateResult();
+        }
       });
     }
   }
@@ -265,6 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           key: ValueKey(_courses[index].id),
                           course: _courses[index],
                           onRemove: () => _removeCourse(_courses[index].id),
+                          onEdit: () => _editCourse(_courses[index]),
                           onChanged: _calculateResult,
                         );
                       },

@@ -1,6 +1,5 @@
+import 'package:cgpa_calculator/screens/semester_report_screen.dart';
 import 'package:flutter/material.dart';
-import '../models/course_model.dart';
-import '../utils/calculator_utils.dart';
 import 'my_courses_screen.dart';
 import 'calculate_cgpa_screen.dart';
 import 'profile_screen.dart';
@@ -20,6 +19,7 @@ class _MainNavigationState extends State<MainNavigation> {
     const HomeScreen(),
     const MyCoursesScreen(),
     const CalculateCgpaScreen(),
+    const SemesterReportScreen(),
     const Center(child: Text('Semester Report (Coming Soon)')),
     const ProfileScreen(),
   ];

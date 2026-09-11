@@ -1,16 +1,17 @@
 class Course {
-  final String id;
+  String id;
   String name;
   double credit;
   double gradePoint;
+  String semester;
 
   Course({
     required this.id,
-    this.name = '',
-    this.credit = 3.0,
-    this.gradePoint = 4.0,
+    required this.name,
+    required this.credit,
+    required this.gradePoint,
+    this.semester = 'Fall 2026', 
   });
-
 
   Map<String, dynamic> toMap() {
     return {
@@ -18,16 +19,17 @@ class Course {
       'name': name,
       'credit': credit,
       'gradePoint': gradePoint,
+      'semester': semester,
     };
   }
 
-  
   factory Course.fromMap(Map<String, dynamic> map) {
     return Course(
-      id: map['id'],
-      name: map['name'],
-      credit: (map['credit'] as num).toDouble(),
-      gradePoint: (map['gradePoint'] as num).toDouble(),
+      id: map['id']?.toString() ?? '',
+      name: map['name'] ?? '',
+      credit: (map['credit'] ?? 0.0).toDouble(),
+      gradePoint: (map['gradePoint'] ?? 0.0).toDouble(),
+      semester: map['semester'] ?? 'Fall 2026', 
     );
   }
 }

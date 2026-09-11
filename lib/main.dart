@@ -1,4 +1,6 @@
+import 'package:cgpa_calculator/screens/home_screens.dart';
 import 'package:cgpa_calculator/screens/main_navigation.dart';
+import 'package:cgpa_calculator/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'utils/app_theme.dart';
 
@@ -17,7 +19,7 @@ class CGPACalculatorApp extends StatelessWidget {
       themeMode: ThemeMode.system, //
       theme: AppTheme.lightTheme, //
       darkTheme: AppTheme.darkTheme, //
-      home: const MainNavigation(),
+      home: const ProfileScreen(),
     );
   }
 }

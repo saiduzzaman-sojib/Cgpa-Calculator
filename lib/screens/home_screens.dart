@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/course_model.dart';
 import '../utils/calculator_utils.dart';
 import '../widgets/course_card.dart';
+import 'my_courses_screen.dart';
+import 'add_course_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Course> _courses = [];
   double _cgpa = 0.00;
+  double _totalCredits = 0.0;
   bool _isLoading = true;
 
   @override
@@ -32,13 +35,9 @@ class _HomeScreenState extends State<HomeScreen> {
         final List<dynamic> decoded = jsonDecode(coursesString);
         _courses = decoded.map((item) => Course.fromMap(item)).toList();
       } else {
-        _courses = [
-          Course(id: '1', name: 'Course 1', credit: 3.0, gradePoint: 4.0),
-          Course(id: '2', name: 'Course 2', credit: 3.0, gradePoint: 4.0),
-          Course(id: '3', name: 'Course 3', credit: 3.0, gradePoint: 4.0),
-        ];
+        _courses = [];
       }
-      _cgpa = CalculatorUtils.calculateCGPA(_courses);
+      _calculateResult();
       _isLoading = false;
     });
   }
@@ -49,26 +48,23 @@ class _HomeScreenState extends State<HomeScreen> {
     await prefs.setString('saved_courses', jsonEncode(mappedList));
   }
 
-  void _addCourse() {
-    setState(() {
-      _courses.add(Course(
-        id: DateTime.now().toString(),
-        name: 'Course ${_courses.length + 1}',
-        credit: 3.0,
-        gradePoint: 4.0,
-      ));
-      _calculateResult();
-    });
+  Future<void> _addCourse() async {
+    final newCourse = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AddCourseScreen()),
+    );
+    
+    if (newCourse != null && newCourse is Course) {
+      setState(() {
+        _courses.insert(0, newCourse);
+        _calculateResult();
+      });
+    }
   }
 
-  void _removeCourse(int index) {
+  void _removeCourse(String id) {
     setState(() {
-      _courses.removeAt(index);
-      for (int i = 0; i < _courses.length; i++) {
-        if (_courses[i].name.startsWith('Course ')) {
-          _courses[i].name = 'Course ${i + 1}';
-        }
-      }
+      _courses.removeWhere((course) => course.id == id);
       _calculateResult();
     });
   }
@@ -76,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _calculateResult() {
     setState(() {
       _cgpa = CalculatorUtils.calculateCGPA(_courses);
+      _totalCredits = _courses.fold(0, (sum, item) => sum + item.credit);
     });
     _saveCourses();
   }
@@ -92,74 +89,186 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('CGPA Dashboard', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: _courses.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.school_rounded, size: 60, color: theme.colorScheme.primary.withOpacity(0.4)),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'No courses added yet',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.grey),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Hello, Sojib 👋',
+                        style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Keep going! You\'re doing great',
+                        style: TextStyle(fontSize: 15, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                    child: Text('MS', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-              itemCount: _courses.length,
-              itemBuilder: (context, index) {
-                return CourseCard(
-                  key: ValueKey(_courses[index].id),
-                  course: _courses[index],
-                  onRemove: () => _removeCourse(index),
-                  onChanged: _calculateResult,
-                );
-              },
-            ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addCourse,
-        icon: const Icon(Icons.add_rounded, size: 20),
-        label: const Text('Add Course', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF132F73).withOpacity(0.4) : Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            )
-          ],
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SafeArea(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'Current CGPA: ',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [theme.colorScheme.primary, const Color(0xFF1E3A8A)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.colorScheme.primary.withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Current CGPA', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 8),
+                          Text(
+                            _cgpa.toStringAsFixed(2),
+                            style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      height: 115,
+                      decoration: BoxDecoration(
+                        color: theme.inputDecorationTheme.fillColor ?? (isDark ? const Color(0xFF132F73).withOpacity(0.3) : Colors.white),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('Total Credits', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey)),
+                          const SizedBox(height: 8),
+                          Text(
+                            _totalCredits.toStringAsFixed(0),
+                            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _cgpa.toStringAsFixed(2),
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
+              const SizedBox(height: 32),
+              const Text('Quick Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: _addCourse,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(Icons.add_box_rounded, color: theme.colorScheme.primary, size: 28),
+                            const SizedBox(height: 8),
+                            Text('Add Course', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 14)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const MyCoursesScreen()),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.transparent : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: const Column(
+                          children: [
+                            Icon(Icons.library_books_rounded, color: Colors.grey, size: 28),
+                            SizedBox(height: 8),
+                            Text('All Courses', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Recent Courses', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('${_courses.length} items', style: TextStyle(fontSize: 14, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _courses.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 20.0),
+                        child: Text(
+                          'No courses added yet. Add one to get started!',
+                          style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _courses.length,
+                      itemBuilder: (context, index) {
+                        return CourseCard(
+                          key: ValueKey(_courses[index].id),
+                          course: _courses[index],
+                          onRemove: () => _removeCourse(_courses[index].id),
+                          onChanged: _calculateResult,
+                        );
+                      },
+                    ),
             ],
           ),
         ),

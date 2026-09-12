@@ -40,7 +40,7 @@ A modern, secure, and feature-rich offline-first mobile application built with *
 
 You can easily download and test the app on your Android device:
 1. Go to the [Releases](../../releases) section of this repository.
-2. Download the latest **`app-release.apk`** file.
+2. Download the latest **`CGPA_Tracker_v1.0.apk`** file.
 3. Install it on your Android phone and start tracking your academic journey!
 
 ---

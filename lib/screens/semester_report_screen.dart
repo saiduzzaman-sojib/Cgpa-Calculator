@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/course_model.dart';
-import '../utils/calculator_utils.dart';
+import '../utils/database_helper.dart'; 
 
 class SemesterReportScreen extends StatefulWidget {
   const SemesterReportScreen({super.key});
@@ -12,187 +10,308 @@ class SemesterReportScreen extends StatefulWidget {
 }
 
 class _SemesterReportScreenState extends State<SemesterReportScreen> {
-  List<Course> _allCourses = [];
-  List<Course> _semesterCourses = [];
-  List<String> _semesters = ['Fall 2026'];
-  String _selectedSemester = 'Fall 2026';
-  bool _isLoading = true;
+  List<Map<String, dynamic>> _semesterRecords = [];
+  int? _userId;
+
+  final List<TextEditingController> _nameControllers = [];
+  final List<TextEditingController> _creditControllers = [];
+  final List<TextEditingController> _cgpaControllers = [];
 
   @override
   void initState() {
     super.initState();
-    _loadCourses();
+    _loadRecords();
   }
 
-  Future<void> _loadCourses() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? coursesString = prefs.getString('saved_courses');
+  void _initControllers() {
+    for (var ctrl in _nameControllers) { ctrl.dispose(); }
+    for (var ctrl in _creditControllers) { ctrl.dispose(); }
+    for (var ctrl in _cgpaControllers) { ctrl.dispose(); }
+    
+    _nameControllers.clear();
+    _creditControllers.clear();
+    _cgpaControllers.clear();
 
-    if (coursesString != null) {
-      final List<dynamic> decoded = jsonDecode(coursesString);
-      _allCourses = decoded.map((item) => Course.fromMap(item)).toList();
+    for (var record in _semesterRecords) {
+      _nameControllers.add(TextEditingController(text: record['semester_name']));
       
-      // Extract unique semesters from saved courses
-      final Set<String> uniqueSemesters = _allCourses.map((c) => c.semester).toSet();
-      if (uniqueSemesters.isNotEmpty) {
-        _semesters = uniqueSemesters.toList()..sort();
-        if (!_semesters.contains(_selectedSemester)) {
-          _selectedSemester = _semesters.first;
-        }
-      }
+      double cred = record['total_credits'] ?? 14.0;
+      _creditControllers.add(TextEditingController(text: cred == 0.0 ? '' : (cred == cred.toInt() ? cred.toInt().toString() : cred.toString())));
+      
+      double cg = record['sgpa'] ?? 0.0;
+      _cgpaControllers.add(TextEditingController(text: cg == 0.0 ? '' : cg.toString()));
     }
-
-    _filterBySemester();
-    setState(() => _isLoading = false);
   }
 
-  void _filterBySemester() {
-    setState(() {
-      _semesterCourses = _allCourses.where((c) => c.semester == _selectedSemester).toList();
+  @override
+  void dispose() {
+    for (var ctrl in _nameControllers) { ctrl.dispose(); }
+    for (var ctrl in _creditControllers) { ctrl.dispose(); }
+    for (var ctrl in _cgpaControllers) { ctrl.dispose(); }
+    super.dispose();
+  }
+
+  Future<void> _loadRecords() async {
+    final prefs = await SharedPreferences.getInstance();
+    _userId = prefs.getInt('user_id');
+
+    if (_userId != null) {
+      final dbHelper = DatabaseHelper();
+      final records = await dbHelper.getSemesters(_userId!);
+      
+      setState(() {
+        _semesterRecords = List<Map<String, dynamic>>.from(records);
+        _initControllers();
+      });
+    }
+  }
+
+  Future<void> _addSemesterRecord() async {
+    if (_userId == null) return;
+    
+    final db = await DatabaseHelper().database;
+    await db.insert('semesters', {
+      'user_id': _userId,
+      'semester_name': 'Semester ${_semesterRecords.length + 1}',
+      'sgpa': 0.00,
+      'total_credits': 14.0,
     });
+    
+    _loadRecords(); 
   }
 
-  String _getLetterGrade(double gradePoint) {
-    if (gradePoint >= 4.0) return 'A+';
-    if (gradePoint >= 3.75) return 'A';
-    if (gradePoint >= 3.5) return 'A-';
-    if (gradePoint >= 3.25) return 'B+';
-    if (gradePoint >= 3.0) return 'B';
-    if (gradePoint >= 2.75) return 'B-';
-    if (gradePoint >= 2.5) return 'C+';
-    if (gradePoint >= 2.25) return 'C';
-    if (gradePoint >= 2.0) return 'D';
-    return 'F';
+  Future<void> _removeSemesterRecord(int index) async {
+    final int semesterId = _semesterRecords[index]['id'];
+    final db = await DatabaseHelper().database;
+    
+    await db.delete('semesters', where: 'id = ?', whereArgs: [semesterId]);
+    await db.delete('courses', where: 'semester_id = ?', whereArgs: [semesterId]); 
+    
+    _loadRecords(); 
+  }
+
+  Future<void> _updateRecord(int id, String key, dynamic value) async {
+    final db = await DatabaseHelper().database;
+    await db.update('semesters', {key: value}, where: 'id = ?', whereArgs: [id]);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    double totalCredits = _semesterCourses.fold(0, (sum, item) => sum + item.credit);
-    double semesterGpa = CalculatorUtils.calculateCGPA(_semesterCourses);
+    final bool isPushed = Navigator.of(context).canPop();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Semester Report', style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true, elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Select Semester', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF132F73).withOpacity(0.3) : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedSemester,
-                      items: _semesters.map((sem) => DropdownMenuItem(value: sem, child: Text(sem, style: const TextStyle(fontWeight: FontWeight.bold)))).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          _selectedSemester = val;
-                          _filterBySemester();
-                        }
-                      },
-                    ),
+      backgroundColor: isDark ? theme.scaffoldBackgroundColor : const Color(0xFFFAFAFA),
+      appBar: isPushed
+          ? AppBar(
+              title: const Text('Semester Report', style: TextStyle(fontWeight: FontWeight.bold)),
+              centerTitle: true,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+            )
+          : null,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isPushed) ...[
+                const Text(
+                  'Past Semester Records',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
                   ),
                 ),
+                const SizedBox(height: 8),
               ],
-            ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [theme.colorScheme.primary, const Color(0xFF1E3A8A)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [BoxShadow(color: theme.colorScheme.primary.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
+              Text(
+                'Keep track of your past semesters to calculate your overall CGPA accurately.',
+                style: TextStyle(
+                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_selectedSemester, style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
-                      Text(semesterGpa.toStringAsFixed(2), style: const TextStyle(color: Colors.white, fontSize: 38, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      const Text('Semester GPA', style: TextStyle(color: Colors.white60, fontSize: 12)),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), shape: BoxShape.circle),
-                    child: const Icon(Icons.assessment_rounded, color: Colors.white, size: 36),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 28),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Summary Breakdown', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Text('${totalCredits.toStringAsFixed(0)} Total Credits', style: TextStyle(fontSize: 14, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            _semesterCourses.isEmpty 
-              ? const Center(child: Padding(padding: EdgeInsets.all(20), child: Text("No courses added for this semester.", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))))
-              : ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _semesterCourses.length,
-              itemBuilder: (context, index) {
-                final course = _semesterCourses[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.transparent : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(course.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          Text('${course.credit} Credits', style: TextStyle(fontSize: 13, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              const SizedBox(height: 24),
+              Expanded(
+                child: _semesterRecords.isEmpty
+                    ? Center(
                         child: Text(
-                          '${_getLetterGrade(course.gradePoint)} (${course.gradePoint})',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
+                          'No semesters found.\nAdd one or calculate from CGPA screen.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
                         ),
+                      )
+                    : ListView.builder(
+                        itemCount: _semesterRecords.length,
+                        itemBuilder: (context, index) {
+                          final int recordId = _semesterRecords[index]['id'];
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12.0),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  flex: 4,
+                                  child: TextFormField(
+                                    controller: _nameControllers[index],
+                                    decoration: InputDecoration(
+                                      labelText: 'Semester Name',
+                                      labelStyle: TextStyle(
+                                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade500,
+                                        fontSize: 12,
+                                      ),
+                                      filled: true,
+                                      fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(
+                                          color: isDark ? Colors.transparent : Colors.grey.shade200,
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(
+                                          color: isDark ? Colors.transparent : Colors.grey.shade200,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                    ),
+                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                    onChanged: (value) {
+                                      _updateRecord(recordId, 'semester_name', value);
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  flex: 3,
+                                  child: TextFormField(
+                                    controller: _creditControllers[index],
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    decoration: InputDecoration(
+                                      labelText: 'Credits',
+                                      labelStyle: TextStyle(
+                                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade500,
+                                        fontSize: 12,
+                                      ),
+                                      filled: true,
+                                      fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(
+                                          color: isDark ? Colors.transparent : Colors.grey.shade200,
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(
+                                          color: isDark ? Colors.transparent : Colors.grey.shade200,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                    ),
+                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                    onChanged: (value) {
+                                      double cred = double.tryParse(value) ?? 0.0;
+                                      _updateRecord(recordId, 'total_credits', cred);
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  flex: 3,
+                                  child: TextFormField(
+                                    controller: _cgpaControllers[index],
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    decoration: InputDecoration(
+                                      labelText: 'CGPA',
+                                      labelStyle: TextStyle(
+                                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade500,
+                                        fontSize: 12,
+                                      ),
+                                      filled: true,
+                                      fillColor: isDark ? theme.colorScheme.primary.withOpacity(0.2) : theme.colorScheme.primary.withOpacity(0.08),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Colors.transparent,
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Colors.transparent,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                    ),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.primary,
+                                      fontSize: 14,
+                                    ),
+                                    onChanged: (value) {
+                                      double cgpa = double.tryParse(value) ?? 0.0;
+                                      _updateRecord(recordId, 'sgpa', cgpa);
+                                    },
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close_rounded, color: Colors.redAccent, size: 20),
+                                  onPressed: () => _removeSemesterRecord(index),
+                                  splashRadius: 20,
+                                  padding: const EdgeInsets.only(left: 4),
+                                  constraints: const BoxConstraints(),
+                                )
+                              ],
+                            ),
+                          );
+                        },
                       ),
-                    ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: _addSemesterRecord,
+                  icon: Icon(Icons.add_rounded, color: theme.colorScheme.primary),
+                  label: Text(
+                    'Add Semester',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
                   ),
-                );
-              },
-            ),
-          ],
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    side: BorderSide(color: isDark ? Colors.transparent : Colors.grey.shade200, width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

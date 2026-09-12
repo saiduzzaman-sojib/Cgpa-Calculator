@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/database_helper.dart';
 import 'login_screen.dart';
+import 'main_navigation.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -11,7 +14,6 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
-  final _emailController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -19,21 +21,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void dispose() {
     _fullNameController.dispose();
-    _emailController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _handleRegister() {
+  Future<void> _handleRegister() async {
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registration Successful! Welcome to CGPA Tracker.'),
-          backgroundColor: Color(0xFF2563EB),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      final String name = _fullNameController.text.trim();
+      final String username = _usernameController.text.trim();
+      final String password = _passwordController.text;
+
+      final Map<String, dynamic> user = {
+        'name': name,
+        'username': username,
+        'password': password,
+      };
+
+      final dbHelper = DatabaseHelper();
+      final int result = await dbHelper.registerUser(user);
+
+      if (!mounted) return;
+
+      if (result == -1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account with this username already exists!'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      } else {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_logged_in', true);
+        await prefs.setInt('user_id', result);
+        await prefs.setString('user_name', name);
+        await prefs.setString('user_username', username);
+        await prefs.remove('profile_image_path');
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainNavigation()),
+        );
+      }
     }
   }
 
@@ -117,35 +146,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
+                  controller: _usernameController,
                   decoration: const InputDecoration(
-                    labelText: 'Email Address',
-                    prefixIcon: Icon(Icons.mail_outline_rounded, size: 20),
+                    labelText: 'Username',
+                    prefixIcon: Icon(Icons.alternate_email_rounded, size: 20),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    if (!value.contains('@') || !value.contains('.')) {
-                      return 'Please enter a valid email address';
+                      return 'Please enter a username';
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
-                  controller: _usernameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Username (optional)',
-                    prefixIcon: Icon(Icons.alternate_email_rounded, size: 20),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
-                  keyboardType: TextInputType.number, // পাসওয়ার্ডের জন্য নাম্বার কিবোর্ড
+                  keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     labelText: 'Password (PIN/Number)',
                     prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),

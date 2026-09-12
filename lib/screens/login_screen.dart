@@ -1,7 +1,10 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/database_helper.dart';
 import 'register_screen.dart';
+import 'main_navigation.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,27 +15,53 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login Successful! Dashboard coming soon.'),
-          backgroundColor: Color(0xFF2563EB),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      final username = _usernameController.text.trim();
+      final password = _passwordController.text;
+
+      final dbHelper = DatabaseHelper();
+      final user = await dbHelper.loginUser(username, password);
+
+      if (!mounted) return;
+
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invalid Username or Password!'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      } else {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_logged_in', true);
+        await prefs.setInt('user_id', user['id'] as int);
+        await prefs.setString('user_name', user['name'] as String);
+        await prefs.setString('user_username', user['username'] as String);
+        
+        if (user['image_path'] != null) {
+          await prefs.setString('profile_image_path', user['image_path'] as String);
+        } else {
+          await prefs.remove('profile_image_path');
+        }
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainNavigation()),
+        );
+      }
     }
   }
 
@@ -102,18 +131,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 32),
                 TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
+                  controller: _usernameController,
                   decoration: const InputDecoration(
-                    labelText: 'Email Address',
-                    prefixIcon: Icon(Icons.mail_outline_rounded, size: 20),
+                    labelText: 'Username',
+                    prefixIcon: Icon(Icons.person_outline_rounded, size: 20),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    if (!value.contains('@') || !value.contains('.')) {
-                      return 'Please enter a valid email address';
+                      return 'Please enter your username';
                     }
                     return null;
                   },

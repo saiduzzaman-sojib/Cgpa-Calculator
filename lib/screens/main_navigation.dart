@@ -1,9 +1,10 @@
-import 'package:cgpa_calculator/screens/semester_report_screen.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'my_courses_screen.dart';
-import 'calculate_cgpa_screen.dart';
-import 'profile_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screens.dart';
+import 'calculate_cgpa_screen.dart';
+import 'semester_report_screen.dart';
+import 'profile_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -14,20 +15,35 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
+  String _drawerUserName = 'Md Saiduzzaman';
+  String? _drawerImagePath;
   
   final List<Widget> _screens = [
     const HomeScreen(),
-    const MyCoursesScreen(),
     const CalculateCgpaScreen(),
     const SemesterReportScreen(),
-    const Center(child: Text('Semester Report (Coming Soon)')),
     const ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDrawerUserData();
+  }
+
+  Future<void> _loadDrawerUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _drawerUserName = prefs.getString('user_name') ?? 'Md Saiduzzaman';
+      _drawerImagePath = prefs.getString('profile_image_path');
+    });
+  }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
+    _loadDrawerUserData();
     Navigator.pop(context);
   }
 
@@ -45,6 +61,15 @@ class _MainNavigationState extends State<MainNavigation> {
         elevation: 0,
         backgroundColor: theme.scaffoldBackgroundColor,
         iconTheme: IconThemeData(color: theme.colorScheme.primary),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () {
+              _loadDrawerUserData();
+              Scaffold.of(context).openDrawer();
+            },
+          ),
+        ),
       ),
       drawer: Drawer(
         backgroundColor: const Color(0xFF0F172A),
@@ -52,69 +77,111 @@ class _MainNavigationState extends State<MainNavigation> {
           children: [
             SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(20.0, 24.0, 20.0, 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.school_rounded, color: Colors.blue.shade400, size: 32),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'CGPA Tracker',
-                      style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                    Row(
+                      children: [
+                        Icon(Icons.school_rounded, color: Colors.blue.shade400, size: 28),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'CGPA Tracker',
+                          style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    GestureDetector(
+                      onTap: () => _onItemTapped(3),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white10),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 26,
+                              backgroundColor: Colors.blue.shade600,
+                              backgroundImage: _drawerImagePath != null ? FileImage(File(_drawerImagePath!)) : null,
+                              child: _drawerImagePath == null
+                                  ? const Icon(Icons.person_rounded, size: 30, color: Colors.white)
+                                  : null,
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _drawerUserName,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 3),
+                                  const Text(
+                                    'View Profile',
+                                    style: TextStyle(
+                                      color: Colors.blueAccent,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
+            const Divider(color: Colors.white10, height: 1),
+            const SizedBox(height: 12),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 12.0),
                 children: [
                   _buildDrawerItem(index: 0, icon: Icons.home_rounded, title: 'Home'),
-                  _buildDrawerItem(index: 1, icon: Icons.library_books_rounded, title: 'My Courses'),
-                  _buildDrawerItem(index: 2, icon: Icons.calculate_rounded, title: 'Calculate CGPA'),
-                  _buildDrawerItem(index: 3, icon: Icons.assessment_rounded, title: 'Semester Report'),
-                  _buildDrawerItem(index: 4, icon: Icons.more_horiz_rounded, title: 'More / Profile'),
+                  _buildDrawerItem(index: 1, icon: Icons.calculate_rounded, title: 'Calculate CGPA'),
+                  _buildDrawerItem(index: 2, icon: Icons.assessment_rounded, title: 'Semester Report'),
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.workspace_premium_rounded, color: Colors.orange, size: 24),
+              padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
+                    'DEVELOPED BY',
+                    style: TextStyle(
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      color: Colors.white38,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(height: 12),
-                    const Text('Upgrade to Premium', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(height: 6),
-                    const Text('Get more features, remove ads and more!', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade600,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('Go Premium', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Md Saiduzzaman Sojib',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color.fromARGB(255, 100, 212, 246),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -152,10 +219,9 @@ class _MainNavigationState extends State<MainNavigation> {
   String _getAppBarTitle(int index) {
     switch (index) {
       case 0: return 'Dashboard';
-      case 1: return 'My Courses';
-      case 2: return 'Calculate CGPA';
-      case 3: return 'Semester Report';
-      case 4: return 'Profile Settings';
+      case 1: return 'Calculate CGPA';
+      case 2: return 'Semester Report';
+      case 3: return 'Profile Settings';
       default: return '';
     }
   }
